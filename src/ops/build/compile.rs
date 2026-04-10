@@ -248,7 +248,9 @@ impl Executor for SharedLibraryExecutor {
             let tool_root = util::llvm_toolchain_root(&self.config);
 
             // NDK r23 renamed <ndk_llvm_triple>-ld to ld
-            let linker_path = tool_root.join("bin").join("ld");
+            let linker_path = tool_root
+                .join("bin")
+                .join(format!("ld{}", util::EXECUTABLE_SUFFIX_EXE));
 
             let sysroot = tool_root.join("sysroot");
             let version_independent_libraries_path = sysroot

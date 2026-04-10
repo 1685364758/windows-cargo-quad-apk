@@ -5,7 +5,7 @@ mod compile;
 mod preprocessor;
 mod targets;
 pub mod tempfile;
-mod util;
+pub mod util;
 
 use self::compile::SharedLibraries;
 use crate::config::{AndroidConfig, AndroidTargetConfig};
@@ -104,9 +104,11 @@ fn build_apks(
             .sdk_path
             .join("build-tools")
             .join(&config.build_tools_version);
-        let aapt_path = build_tools_path.join("aapt2");
-        let d8_path = build_tools_path.join("d8");
-        let zipalign_path = build_tools_path.join("zipalign");
+        let aapt_path = build_tools_path.join(format!("aapt2{}", util::EXECUTABLE_SUFFIX_EXE));
+        let aapt_v1_path = build_tools_path.join(format!("aapt{}", util::EXECUTABLE_SUFFIX_EXE));
+        let d8_path = build_tools_path.join(format!("d8{}", util::EXECUTABLE_SUFFIX_BAT));
+        let zipalign_path =
+            build_tools_path.join(format!("zipalign{}", util::EXECUTABLE_SUFFIX_EXE));
 
         // Create unaligned APK which includes resources and assets
         let unaligned_apk_name = format!("{}_unaligned.apk", target.name());
@@ -128,7 +130,7 @@ fn build_apks(
             .split(".")
             .last()
             .unwrap()
-            .clone();
+            .to_string();
 
         let mut r_java_path = gen_dir.clone();
         for file_part in package_name.split('.') {
@@ -190,7 +192,7 @@ fn build_apks(
             >
         </LinearLayout>
         "##
-        );
+        )?;
 
         let mut aapt_compile_cmd = ProcessBuilder::new(&aapt_path);
         aapt_compile_cmd
@@ -238,8 +240,15 @@ fn build_apks(
         aapt_link_cmd.cwd(&target_directory).exec()?;
 
         let mut classpath = String::new();
+        let classpath_separator = if cfg!(target_os = "windows") {
+            ";"
+        } else {
+            ":"
+        };
         for (comptime_jar, _) in &java_files.comptime_jar_files {
-            classpath.push_str(":");
+            if !classpath.is_empty() {
+                classpath.push_str(classpath_separator);
+            }
             classpath.push_str(comptime_jar.to_str().unwrap());
         }
 
@@ -274,9 +283,21 @@ fn build_apks(
 
         java_cmd.cwd(&target_directory).exec()?;
 
-        let mut d8_cmd = ProcessBuilder::new(&d8_path);
-        for class_file in glob::glob(target_directory.join("**/*.class").to_str().unwrap()).unwrap()
-        {
+        let mut d8_cmd = util::script_process(&d8_path);
+        let glob_pattern = if cfg!(target_os = "windows") {
+            target_directory
+                .join("**/*.class")
+                .to_str()
+                .unwrap()
+                .replace("\\", "/")
+        } else {
+            target_directory
+                .join("**/*.class")
+                .to_str()
+                .unwrap()
+                .to_string()
+        };
+        for class_file in glob::glob(&glob_pattern).unwrap() {
             let file = class_file.unwrap();
             d8_cmd.arg(file.to_str().unwrap());
         }
@@ -289,6 +310,15 @@ fn build_apks(
 
         d8_cmd.cwd(&target_directory).exec()?;
 
+        #[cfg(target_os = "windows")]
+        util::script_process(&aapt_v1_path)
+            .arg("add")
+            .arg(&unaligned_apk_name)
+            .arg("classes.dex")
+            .cwd(&target_directory)
+            .exec()?;
+
+        #[cfg(not(target_os = "windows"))]
         ProcessBuilder::new("zip")
             .arg("-u")
             .arg(&unaligned_apk_name)
@@ -312,6 +342,15 @@ fn build_apks(
             fs::copy(&shared_library.path, target_shared_object_path)?;
 
             // Add to the APK
+            #[cfg(target_os = "windows")]
+            util::script_process(&aapt_v1_path)
+                .arg("add")
+                .arg(&unaligned_apk_name)
+                .arg(so_path)
+                .cwd(&target_directory)
+                .exec()?;
+
+            #[cfg(not(target_os = "windows"))]
             ProcessBuilder::new("zip")
                 .arg("-u")
                 .arg(&unaligned_apk_name)

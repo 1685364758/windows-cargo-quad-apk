@@ -21,7 +21,7 @@ fn main() {
     };
 
     let args = match args.subcommand() {
-        Some(("quad-apk", subcommand_matches)) => subcommand_matches,
+        Some(("windows-quad-apk", subcommand_matches)) => subcommand_matches,
         _ => &args,
     };
 
@@ -75,7 +75,7 @@ fn main() {
 }
 
 fn cli() -> Command {
-    Command::new("cargo-apk")
+    Command::new("windows-cargo-quad-apk")
         .arg(
             Arg::new("verbose")
                 .long("verbose")
@@ -151,8 +151,8 @@ fn cli() -> Command {
 }
 
 fn cli_apk() -> Command {
-    Command::new("quad-apk")
-        .about("dummy subcommand to allow for calling cargo apk instead of cargo-apk")
+    Command::new("windows-quad-apk")
+        .about("dummy subcommand to allow for calling cargo windows-quad-apk instead of windows-cargo-quad-apk")
         .subcommands(vec![cli_build(), cli_install(), cli_run(), cli_logcat()])
 }
 
@@ -360,7 +360,10 @@ pub fn execute_logcat(options: &ArgMatches, cargo_gctx: &GlobalContext) -> cargo
     let android_config = config::load(&workspace, &options.get_one::<String>("package").cloned())?;
 
     drop(writeln!(workspace.gctx().shell().err(), "Starting logcat"));
-    let adb = android_config.sdk_path.join("platform-tools/adb");
+    let adb = android_config.sdk_path.join(format!(
+        "platform-tools/adb{}",
+        ops::build::util::EXECUTABLE_SUFFIX_EXE
+    ));
     ProcessBuilder::new(&adb).arg("logcat").exec()?;
 
     Ok(())

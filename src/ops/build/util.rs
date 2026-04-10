@@ -41,7 +41,12 @@ pub fn get_target_directory(root_build_dir: &PathBuf, target: &Target) -> CargoR
 
 /// Returns path to NDK provided make
 pub fn make_path(config: &AndroidConfig) -> PathBuf {
-    config.ndk_path.join("prebuild").join(HOST_TAG).join("make")
+    config
+        .ndk_path
+        .join("prebuilt")
+        .join(HOST_TAG)
+        .join("bin")
+        .join(format!("make{}", EXECUTABLE_SUFFIX_EXE))
 }
 
 /// Returns the path to the LLVM toolchain provided by the NDK
@@ -387,16 +392,16 @@ const HOST_TAG: &str = "darwin-x86_64";
 // On non-windows platforms they are empty.
 
 #[cfg(target_os = "windows")]
-const EXECUTABLE_SUFFIX_EXE: &str = ".exe";
+pub const EXECUTABLE_SUFFIX_EXE: &str = ".exe";
 
 #[cfg(not(target_os = "windows"))]
-const EXECUTABLE_SUFFIX_EXE: &str = "";
+pub const EXECUTABLE_SUFFIX_EXE: &str = "";
 
 #[cfg(target_os = "windows")]
-const EXECUTABLE_SUFFIX_CMD: &str = ".cmd";
+pub const EXECUTABLE_SUFFIX_CMD: &str = ".cmd";
 
 #[cfg(not(target_os = "windows"))]
-const EXECUTABLE_SUFFIX_CMD: &str = "";
+pub const EXECUTABLE_SUFFIX_CMD: &str = "";
 
 #[cfg(target_os = "windows")]
 pub const EXECUTABLE_SUFFIX_BAT: &str = ".bat";

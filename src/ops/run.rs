@@ -41,7 +41,10 @@ pub fn run(workspace: &Workspace, config: &AndroidConfig, options: &ArgMatches) 
     //
     // Start the APK using adb
     //
-    let adb = config.sdk_path.join("platform-tools/adb");
+    let adb = config.sdk_path.join(format!(
+        "platform-tools/adb{}",
+        crate::ops::build::util::EXECUTABLE_SUFFIX_EXE
+    ));
 
     // Found it by doing this :
     //     adb shell "cmd package resolve-activity --brief com.author.myproject | tail -n 1"

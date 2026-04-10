@@ -13,7 +13,10 @@ pub fn install(
 ) -> CargoResult<BuildResult> {
     let build_result = build::build(workspace, config, options)?;
 
-    let adb = config.sdk_path.join("platform-tools/adb");
+    let adb = config.sdk_path.join(format!(
+        "platform-tools/adb{}",
+        build::util::EXECUTABLE_SUFFIX_EXE
+    ));
 
     for apk_path in build_result.target_to_apk_map.values() {
         drop(writeln!(
